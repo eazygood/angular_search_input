@@ -1,0 +1,69 @@
+{% extends 'test_base.html.twig' %}
+
+{% block body %}
+    <div ng-app="mainApp">
+        <div ng-controller="searchController">
+            <input type="text" ng-model="searchText">
+
+            <div ng-show="search.users != ''">
+                <select>
+                    <option ng-repeat="item in search.users">{% verbatim %} {{ item.name}} {% endverbatim %}</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+{% block javascripts %}
+    <script>
+
+        var searchJson = {
+            "users": [
+                {"username": "bahattincinic"},
+                {"username": "test"}
+            ]
+        }
+
+        var app = angular.module('mainApp', []);
+
+
+        //factory
+        app.factory('Search', function($http, $cacheFactory) {
+            return {
+                get: function(payload, successCallback) {
+                    var key = 'search_' + payload.q;
+                    if ($cacheFactory.get(key) == undefined || $cacheFactory.get(key) == '' ) {
+                        $http.get('/test/json', {params: payload}).then(function (data) {
+                            $cacheFactory(key).put('result', data.data);
+
+                            successCallback(data.data);
+                        });
+                    } else {
+                        successCallback($cacheFactory.get(key).get('result'));
+                    }
+                }
+            }
+        })
+
+
+        // controller
+        app.controller('searchController', function($scope, Search) {
+
+            $scope.search = {'users': []};
+            $scope.$watch('searchText', function(val) {
+                var payload = {'q' : val};
+                if (val != '' && val != undefined && val.length > 2) {
+                    Search.get(payload, function(data) {
+                        console.log(data.users);
+                        console.log(Object.keys(data).length);
+                        $scope.search.users = data.users;
+                        $scope.test = data;
+
+                    });
+                } else {
+                    $scope.search.users = [];
+                }
+            });
+        });
+    </script>
+{% endblock %}
